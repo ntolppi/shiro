@@ -16,37 +16,28 @@
 # under the License.
 
 ARG SHIRO_VERSION="2.0.5"
+
 FROM maven:sapmachine AS build
-
-# Redeclare ARG
 ARG SHIRO_VERSION
-
 WORKDIR /src
+# RUN mvn dependency:get -DgroupId=org.apache.shiro.tools -DartifactId=shiro-tools-hasher -Dversion=2.0.5 -Dtransitive=false 
+RUN mvn dependency:get -DgroupId=org.apache.shiro.tools -DartifactId=shiro-tools-hasher -Dclassifier=cli -Dversion=2.0.5
 
-# Get tar.gz release using curl, wget not installed in maven:sapmachine by default
-# -L Follow redirect, empty tar otherwise
-# -O File is named same as remote file, ie shiro-root-${SHIRO_VERSION}.tar.gz
-RUN curl -L -O https://github.com/apache/shiro/archive/refs/tags/shiro-root-${SHIRO_VERSION}.tar.gz
+##########################
 
-# Use tar, unzip not installed in maven:sapmachine by default
-RUN tar -xzf shiro-root-${SHIRO_VERSION}.tar.gz
-WORKDIR /src/shiro-shiro-root-${SHIRO_VERSION}
-RUN mvn clean package 
-
-FROM openjdk:25-slim
-
-# Redeclare ARG
+FROM ghcr.io/graalvm/native-image-community:25-muslib AS compile
 ARG SHIRO_VERSION
+COPY --from=build /root/.m2/repository/org/apache/shiro/tools/shiro-tools-hasher/${SHIRO_VERSION}/shiro-tools-hasher-${SHIRO_VERSION}-cli.jar shiro-tools-hasher-${SHIRO_VERSION}-cli.jar
+RUN native-image -jar shiro-tools-hasher-${SHIRO_VERSION}-cli.jar
 
-# Make ENV var for use in entrypoint
-ENV SHIRO_VERSION_VAR=${SHIRO_VERSION}
+##########################
 
-WORKDIR /opt/app/
-
-# Copy shiro hasher cli jar from previous stage
-COPY --from=build /src/shiro-shiro-root-${SHIRO_VERSION}/tools/hasher/target/shiro-tools-hasher-${SHIRO_VERSION}-cli.jar /opt/app/shiro-tools-hasher-cli.jar
+FROM alpine
+ARG SHIRO_VERSION
+WORKDIR /opt/app
+COPY --from=compile /app/shiro-tools-hasher-${SHIRO_VERSION}-cli /opt/app/shiro-tools-hasher-cli
 
 # Run cli jar
-ENTRYPOINT ["java", "-jar", "/opt/app/shiro-tools-hasher-cli.jar"]
+ENTRYPOINT ["/opt/app/shiro-tools-hasher-cli"]
 
 CMD ["--help"]
