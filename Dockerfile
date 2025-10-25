@@ -20,15 +20,14 @@ ARG SHIRO_VERSION="2.0.5"
 FROM maven:sapmachine AS build
 ARG SHIRO_VERSION
 WORKDIR /src
-# RUN mvn dependency:get -DgroupId=org.apache.shiro.tools -DartifactId=shiro-tools-hasher -Dversion=2.0.5 -Dtransitive=false 
-RUN mvn dependency:get -DgroupId=org.apache.shiro.tools -DartifactId=shiro-tools-hasher -Dclassifier=cli -Dversion=2.0.5
+RUN mvn dependency:get -DgroupId=org.apache.shiro.tools -DartifactId=shiro-tools-hasher -Dclassifier=cli -Dversion=${SHIRO_VERSION}
 
 ##########################
 
 FROM ghcr.io/graalvm/native-image-community:25-muslib AS compile
 ARG SHIRO_VERSION
 COPY --from=build /root/.m2/repository/org/apache/shiro/tools/shiro-tools-hasher/${SHIRO_VERSION}/shiro-tools-hasher-${SHIRO_VERSION}-cli.jar shiro-tools-hasher-${SHIRO_VERSION}-cli.jar
-RUN native-image -jar shiro-tools-hasher-${SHIRO_VERSION}-cli.jar
+RUN native-image --static --libc=musl --future-defaults=all -jar shiro-tools-hasher-${SHIRO_VERSION}-cli.jar
 
 ##########################
 
