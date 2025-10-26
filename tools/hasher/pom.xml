@@ -32,6 +32,7 @@
     <packaging>bundle</packaging>
     <properties>
         <module.name>tools.hasher</module.name>
+        <native.maven.plugin.version>0.11.1</native.maven.plugin.version>
     </properties>
 
     <dependencies>
@@ -124,6 +125,21 @@
                         <_reproducible>true</_reproducible>
                     </instructions>
                 </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.graalvm.buildtools</groupId>
+                <artifactId>native-maven-plugin</artifactId>
+                <version>${native.maven.plugin.version}</version>
+                <extensions>true</extensions>
+                <executions>
+                  <execution>
+                  <id>build-native</id>
+                    <goals>
+                      <goal>compile-no-fork</goal>
+                    </goals>
+                    <phase>package</phase>
+                  </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>

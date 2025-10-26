@@ -15,18 +15,29 @@
 # specific language governing permissions and limitations
 # under the License.
 
-ARG SHIRO_VERSION="2.0.5"
+ARG SHIRO_VERSION="2.0.6-SNAPSHOT"
 
 FROM maven:sapmachine AS build
 ARG SHIRO_VERSION
 WORKDIR /src
-RUN mvn dependency:get -DgroupId=org.apache.shiro.tools -DartifactId=shiro-tools-hasher -Dclassifier=cli -Dversion=${SHIRO_VERSION}
+VOLUME ["./"]
+
+# Get tar.gz release using curl, wget not installed in maven:sapmachine by default
+# -L Follow redirect, empty tar otherwise
+# -O File is named same as remote file, ie shiro-root-${SHIRO_VERSION}.tar.gz
+# RUN curl -L -O https://github.com/apache/shiro/archive/refs/tags/shiro-root-${SHIRO_VERSION}.tar.gz
+
+# Use tar, unzip not installed in maven:sapmachine by default
+# RUN tar -xzf shiro-root-${SHIRO_VERSION}.tar.gz
+WORKDIR /src/shiro-shiro-root-${SHIRO_VERSION}/tools
+RUN mvn clean package 
 
 ##########################
 
 FROM ghcr.io/graalvm/native-image-community:25-muslib AS compile
 ARG SHIRO_VERSION
-COPY --from=build /root/.m2/repository/org/apache/shiro/tools/shiro-tools-hasher/${SHIRO_VERSION}/shiro-tools-hasher-${SHIRO_VERSION}-cli.jar shiro-tools-hasher-${SHIRO_VERSION}-cli.jar
+# COPY --from=build /root/.m2/repository/org/apache/shiro/tools/shiro-tools-hasher/${SHIRO_VERSION}/shiro-tools-hasher-${SHIRO_VERSION}-cli.jar shiro-tools-hasher-${SHIRO_VERSION}-cli.jar
+COPY --from=build /src/shiro-shiro-root-${SHIRO_VERSION}/tools/hasher/target/shiro-tools-hasher-${SHIRO_VERSION}-cli.jar shiro-tools-hasher-${SHIRO_VERSION}-cli.jar
 RUN native-image --static --libc=musl --future-defaults=all -jar shiro-tools-hasher-${SHIRO_VERSION}-cli.jar
 
 ##########################
